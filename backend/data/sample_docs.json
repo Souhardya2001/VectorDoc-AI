@@ -1,0 +1,66 @@
+[
+  {
+    "id": "doc_217",
+    "text": "To resolve Redis downtime during scaling, ensure graceful retries and backup replication. During the last scale-up event, the primary node became unreachable for 90 seconds while new shards were provisioned. Clients without retry logic returned hard errors instead of falling back to replicas.",
+    "metadata": {
+      "title": "Postmortem: Redis Downtime During Scale-up",
+      "tags": ["incident", "redis", "failover"]
+    }
+  },
+  {
+    "id": "doc_218",
+    "text": "This document covers failover strategy for clustered systems, including leader election timing, split-brain avoidance, and how downstream services should treat a temporary loss of quorum as retryable rather than fatal.",
+    "metadata": {
+      "title": "Failover Strategy in Clustered Systems",
+      "tags": ["infrastructure", "failover", "distributed-systems"]
+    }
+  },
+  {
+    "id": "doc_219",
+    "text": "Rate limiting should be applied at the API gateway using a token bucket algorithm. Clients that exceed their quota receive a 429 with a Retry-After header. Retries should use exponential backoff with jitter to avoid thundering herd effects.",
+    "metadata": {
+      "title": "Best Practices for Rate Limiting",
+      "tags": ["api", "performance", "retries"]
+    }
+  },
+  {
+    "id": "doc_220",
+    "text": "The ingestion service reads documents from an S3 bucket and validates schema before writing to the queue. Malformed records are moved to a dead-letter queue and alerted on via PagerDuty rather than blocking the batch.",
+    "metadata": {
+      "title": "Ingestion Pipeline Architecture",
+      "tags": ["ingestion", "architecture", "queue"]
+    }
+  },
+  {
+    "id": "doc_221",
+    "text": "Kafka consumer lag spiked during the March incident because a downstream consumer group was stuck reprocessing a poison message. The fix was adding a max-retry count before routing to a dead-letter topic.",
+    "metadata": {
+      "title": "Postmortem: Kafka Consumer Lag Incident",
+      "tags": ["incident", "kafka", "messaging"]
+    }
+  },
+  {
+    "id": "doc_222",
+    "text": "This integration guide explains how to authenticate service-to-service calls using short-lived JWTs issued by the internal identity provider, and how to rotate signing keys without downtime.",
+    "metadata": {
+      "title": "Service-to-Service Auth Integration Guide",
+      "tags": ["auth", "integration", "security"]
+    }
+  },
+  {
+    "id": "doc_223",
+    "text": "Database connection pool exhaustion caused cascading timeouts across three dependent services. Root cause was a missing connection timeout on a slow query path, which held pool slots indefinitely under load.",
+    "metadata": {
+      "title": "Postmortem: Connection Pool Exhaustion",
+      "tags": ["incident", "database", "postmortem"]
+    }
+  },
+  {
+    "id": "doc_224",
+    "text": "Changelog for v2.3: added support for horizontal pod autoscaling based on custom Redis queue-depth metrics, deprecated the legacy polling-based scaler, and fixed a race condition in leader election on pod restart.",
+    "metadata": {
+      "title": "Changelog v2.3 — Autoscaling Updates",
+      "tags": ["changelog", "kubernetes", "scaling"]
+    }
+  }
+]

@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VectorDoc AI — Semantic Retrieval Console</title>
+<style>
+  :root {
+    --bg: #0e1116;
+    --panel: #151a22;
+    --panel-2: #1a2029;
+    --line: #262e3a;
+    --line-bright: #3a4658;
+    --ink: #e7ebf1;
+    --ink-dim: #8b96a8;
+    --ink-faint: #566073;
+    --amber: #e8a33d;
+    --amber-dim: #8a672c;
+    --teal: #4fb8a8;
+    --danger: #d9695f;
+    --mono: "JetBrains Mono", "SF Mono", "Roboto Mono", Consolas, monospace;
+    --sans: "Inter", -apple-system, "Segoe UI", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    background-image:
+      radial-gradient(ellipse 900px 500px at 15% -10%, rgba(232,163,61,0.06), transparent),
+      radial-gradient(ellipse 700px 500px at 100% 10%, rgba(79,184,168,0.05), transparent);
+    color: var(--ink);
+    font-family: var(--sans);
+    min-height: 100vh;
+  }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 32px 24px 80px; }
+
+  /* ---------- Header ---------- */
+  header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand-mark {
+    width: 36px; height: 36px;
+    border: 1px solid var(--line-bright);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--panel);
+  }
+  .brand-mark svg { width: 18px; height: 18px; }
+  .brand-name { font-family: var(--mono); font-size: 15px; letter-spacing: 0.02em; font-weight: 600; }
+  .brand-sub { font-size: 12px; color: var(--ink-faint); font-family: var(--mono); margin-top: 2px; }
+
+  .status-strip { display: flex; gap: 18px; font-family: var(--mono); font-size: 11.5px; color: var(--ink-dim); }
+  .status-item { display: flex; align-items: center; gap: 6px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 8px var(--teal); }
+  .dot.off { background: var(--ink-faint); box-shadow: none; }
+
+  /* ---------- Search ---------- */
+  .search-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .search-box {
+    flex: 1;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: border-color 0.15s ease;
+  }
+  .search-box:focus-within { border-color: var(--amber-dim); }
+  .search-box svg { flex-shrink: 0; opacity: 0.5; }
+  .search-box input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 14.5px;
+    padding: 14px 0;
+  }
+  .search-box input::placeholder { color: var(--ink-faint); }
+
+  select.k-select {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    color: var(--ink-dim);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 0 12px;
+    outline: none;
+  }
+
+  button.run {
+    background: var(--amber);
+    color: #1a1305;
+    border: none;
+    border-radius: 10px;
+    padding: 0 22px;
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: filter 0.15s ease, transform 0.1s ease;
+  }
+  button.run:hover { filter: brightness(1.08); }
+  button.run:active { transform: scale(0.98); }
+  button.run:disabled { opacity: 0.5; cursor: default; }
+
+  .sample-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 30px; }
+  .sample-chip {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-dim);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+  .sample-chip:hover { border-color: var(--line-bright); color: var(--ink); }
+
+  /* ---------- Main grid ---------- */
+  .grid {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 20px;
+  }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .panel-head {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .panel-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .panel-meta { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
+
+  /* ---------- Results ---------- */
+  .results-body { padding: 6px; min-height: 260px; }
+  .result-card {
+    padding: 16px;
+    border-radius: 8px;
+    display: flex;
+    gap: 16px;
+    cursor: default;
+    transition: background 0.12s ease;
+  }
+  .result-card:hover { background: var(--panel-2); }
+  .rank {
+    font-family: var(--mono);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--ink-faint);
+    min-width: 28px;
+  }
+  .result-main { flex: 1; min-width: 0; }
+  .result-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .result-title { font-size: 14.5px; font-weight: 600; color: var(--ink); }
+  .result-score {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--amber);
+    white-space: nowrap;
+  }
+  .score-bar { height: 3px; background: var(--line); border-radius: 2px; margin: 8px 0 10px; overflow: hidden; }
+  .score-bar-fill { height: 100%; background: linear-gradient(90deg, var(--amber-dim), var(--amber)); }
+  .result-text { font-size: 12.5px; color: var(--ink-dim); line-height: 1.55; margin-bottom: 10px; }
+  .tag-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tag {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--teal);
+    background: rgba(79,184,168,0.08);
+    border: 1px solid rgba(79,184,168,0.25);
+    padding: 3px 8px;
+    border-radius: 5px;
+  }
+
+  .empty-state {
+    height: 260px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: var(--ink-faint);
+    font-family: var(--mono);
+    font-size: 12.5px;
+    text-align: center;
+    padding: 20px;
+  }
+
+  /* ---------- Vector plot ---------- */
+  .plot-body { padding: 18px; }
+  svg.plot { width: 100%; height: auto; display: block; }
+  .plot-caption {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+    padding: 0 18px 16px;
+    line-height: 1.6;
+  }
+  .plot-caption b { color: var(--ink-dim); }
+
+  /* ---------- Architecture strip ---------- */
+  .arch {
+    margin-top: 20px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 18px 20px;
+  }
+  .arch-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 14px;
+  }
+  .arch-flow {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    overflow-x: auto;
+  }
+  .arch-step {
+    flex: 1;
+    min-width: 130px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .arch-step .n { font-family: var(--mono); font-size: 10px; color: var(--amber); }
+  .arch-step .t { font-size: 12.5px; font-weight: 600; color: var(--ink); }
+  .arch-step .f { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint); }
+  .arch-arrow { color: var(--ink-faint); padding: 0 12px; font-size: 14px; flex-shrink: 0; }
+
+  ::selection { background: rgba(232,163,61,0.25); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none">
+          <circle cx="6" cy="6" r="2" fill="#e8a33d"/>
+          <circle cx="18" cy="7" r="2" fill="#4fb8a8"/>
+          <circle cx="12" cy="17" r="2" fill="#e8a33d"/>
+          <path d="M6 6L18 7M6 6L12 17M18 7L12 17" stroke="#3a4658" stroke-width="1"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-name">VectorDoc AI</div>
+        <div class="brand-sub">FAISS-Powered Knowledge Retrieval</div>
+      </div>
+    </div>
+    <div class="status-strip">
+      <div class="status-item"><span class="dot" id="statusDot"></span><span id="statusText">connecting…</span></div>
+      <div class="status-item">INDEX <span id="indexType" style="color:var(--ink)">—</span></div>
+      <div class="status-item">DIM <span id="vecDim" style="color:var(--ink)">—</span></div>
+      <div class="status-item">CORPUS <span id="corpusSize" style="color:var(--ink)">—</span> docs</div>
+    </div>
+  </header>
+
+  <div class="search-row">
+    <div class="search-box">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="queryInput" type="text" placeholder="Ask a natural-language question about the knowledge base…" />
+    </div>
+    <select class="k-select" id="kSelect">
+      <option value="3" selected>top 3</option>
+      <option value="5">top 5</option>
+      <option value="8">top 8</option>
+    </select>
+    <button class="run" id="runBtn">SEARCH →</button>
+  </div>
+
+  <div class="sample-row" id="sampleRow"></div>
+
+  <div class="grid">
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">Ranked Results</div>
+        <div class="panel-meta" id="latencyMeta"></div>
+      </div>
+      <div class="results-body" id="resultsBody">
+        <div class="empty-state">
+          <div>◇</div>
+          <div>Run a query to retrieve the top-k most<br>semantically similar documents.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">Embedding Space</div>
+        <div class="panel-meta">cosine similarity, projected to 2D</div>
+      </div>
+      <div class="plot-body">
+        <svg class="plot" id="plotSvg" viewBox="0 0 420 320"></svg>
+      </div>
+      <div class="plot-caption" id="plotCaption">
+        Query and document vectors are L2-normalized before indexing, so <b>inner product ≡ cosine similarity</b>. This view is a rough 2D layout driven by each result's actual similarity score — closer to center means a higher score.
+      </div>
+    </div>
+  </div>
+
+  <div class="arch">
+    <div class="arch-title">Pipeline</div>
+    <div class="arch-flow">
+      <div class="arch-step"><div class="n">01</div><div class="t">Ingest</div><div class="f">document_loader.py</div></div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-step"><div class="n">02</div><div class="t">Embed</div><div class="f">embedder.py</div></div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-step"><div class="n">03</div><div class="t">Index</div><div class="f">faiss_indexer.py</div></div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-step"><div class="n">04</div><div class="t">Retrieve</div><div class="f">retriever.py</div></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API_BASE = "http://localhost:8000";
+
+const sampleQueries = [
+  "How did we handle Redis failures during scaling incidents?",
+  "What causes database connection pool exhaustion?",
+  "How should clients handle rate limiting?",
+  "How do we authenticate service-to-service calls?",
+];
+
+const sampleRow = document.getElementById("sampleRow");
+sampleQueries.forEach(q => {
+  const chip = document.createElement("div");
+  chip.className = "sample-chip";
+  chip.textContent = q.length > 46 ? q.slice(0, 46) + "…" : q;
+  chip.title = q;
+  chip.onclick = () => { document.getElementById("queryInput").value = q; runSearch(); };
+  sampleRow.appendChild(chip);
+});
+
+async function checkHealth() {
+  try {
+    const res = await fetch(`${API_BASE}/api/health`);
+    const data = await res.json();
+    document.getElementById("statusDot").classList.remove("off");
+    document.getElementById("statusText").textContent = `online · ${data.embedder_backend}`;
+    document.getElementById("indexType").textContent = data.index_type;
+    document.getElementById("vecDim").textContent = data.vector_dim;
+    document.getElementById("corpusSize").textContent = data.corpus_size;
+  } catch (e) {
+    document.getElementById("statusDot").classList.add("off");
+    document.getElementById("statusText").textContent = "backend offline";
+  }
+}
+checkHealth();
+
+const runBtn = document.getElementById("runBtn");
+const queryInput = document.getElementById("queryInput");
+queryInput.addEventListener("keydown", e => { if (e.key === "Enter") runSearch(); });
+runBtn.addEventListener("click", runSearch);
+
+async function runSearch() {
+  const query = queryInput.value.trim();
+  if (!query) return;
+  const k = document.getElementById("kSelect").value;
+
+  runBtn.disabled = true;
+  runBtn.textContent = "SEARCHING…";
+  document.getElementById("resultsBody").innerHTML = `<div class="empty-state"><div>⟳</div><div>Embedding query and searching FAISS index…</div></div>`;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/search`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, k: parseInt(k) })
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    renderResults(data);
+    renderPlot(data.results, query);
+  } catch (e) {
+    document.getElementById("resultsBody").innerHTML =
+      `<div class="empty-state"><div>✕</div><div>Couldn't reach the backend.<br>Make sure the FastAPI server is running on :8000.</div></div>`;
+  } finally {
+    runBtn.disabled = false;
+    runBtn.textContent = "SEARCH →";
+  }
+}
+
+function renderResults(data) {
+  document.getElementById("latencyMeta").textContent = `${data.latency_ms}ms · ${data.embedder_backend}`;
+  const body = document.getElementById("resultsBody");
+  if (!data.results.length) {
+    body.innerHTML = `<div class="empty-state"><div>∅</div><div>No results found.</div></div>`;
+    return;
+  }
+  const maxScore = Math.max(...data.results.map(r => r.score), 0.0001);
+  body.innerHTML = data.results.map((r, i) => `
+    <div class="result-card">
+      <div class="rank">${String(i + 1).padStart(2, "0")}</div>
+      <div class="result-main">
+        <div class="result-top">
+          <div class="result-title">${escapeHtml(r.title)}</div>
+          <div class="result-score">${r.score.toFixed(4)}</div>
+        </div>
+        <div class="score-bar"><div class="score-bar-fill" style="width:${Math.max(4, (r.score / maxScore) * 100)}%"></div></div>
+        <div class="result-text">${escapeHtml(r.text)}</div>
+        <div class="tag-row">${r.tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join("")}</div>
+      </div>
+    </div>
+  `).join("");
+}
+
+function escapeHtml(s) {
+  const d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// Signature element: a live 2D layout of query + result vectors,
+// positioned by actual similarity score (higher score = closer to query point).
+function renderPlot(results, query) {
+  const svg = document.getElementById("plotSvg");
+  const W = 420, H = 320, CX = W / 2, CY = H / 2 - 10;
+  const maxR = 120;
+
+  let elements = [];
+
+  // faint radial rings
+  [0.33, 0.66, 1].forEach(f => {
+    elements.push(`<circle cx="${CX}" cy="${CY}" r="${maxR * f}" fill="none" stroke="#232b37" stroke-width="1"/>`);
+  });
+
+  // query point (center)
+  elements.push(`<circle cx="${CX}" cy="${CY}" r="6" fill="#e8a33d"/>`);
+  elements.push(`<circle cx="${CX}" cy="${CY}" r="11" fill="none" stroke="#e8a33d" stroke-width="1" opacity="0.4"/>`);
+  elements.push(`<text x="${CX}" y="${CY + 24}" text-anchor="middle" fill="#8b96a8" font-family="monospace" font-size="9">query</text>`);
+
+  const maxScore = Math.max(...results.map(r => r.score), 0.0001);
+  const golden = 137.5; // golden angle for even angular spread
+
+  results.forEach((r, i) => {
+    const norm = Math.max(0.08, Math.min(1, r.score / maxScore));
+    const dist = maxR * (1 - norm * 0.82);
+    const angle = (i * golden * Math.PI) / 180;
+    const x = CX + dist * Math.cos(angle);
+    const y = CY + dist * Math.sin(angle);
+    const isTop = i === 0;
+    const color = isTop ? "#e8a33d" : "#4fb8a8";
+    const radius = isTop ? 7 : 5;
+
+    elements.push(`<line x1="${CX}" y1="${CY}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${color}" stroke-width="1" opacity="0.35"/>`);
+    elements.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${radius}" fill="${color}" opacity="0.9"/>`);
+    const labelY = y + (y > CY ? 16 : -12);
+    elements.push(`<text x="${x.toFixed(1)}" y="${labelY.toFixed(1)}" text-anchor="middle" fill="#8b96a8" font-family="monospace" font-size="9">${r.score.toFixed(3)}</text>`);
+  });
+
+  svg.innerHTML = elements.join("");
+}
+</script>
+</body>
+</html>
